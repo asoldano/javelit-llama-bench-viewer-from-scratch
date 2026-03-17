@@ -44,31 +44,39 @@ public class LlamaBenchViewer {
             .type(Arrays.asList(".json", "application/json"))
             .use();
 
-        if (uploadedFiles == null || uploadedFiles.isEmpty()) {
-            // Fallback: mostra i file JSON disponibili nella directory corrente
+        boolean filesFromUpload = uploadedFiles != null && !uploadedFiles.isEmpty();
+
+        // Se nessun file è stato caricato, mostra il fallback per selezionare file esistenti
+        if (!filesFromUpload) {
             Jt.text("").use();  // spacer
             List<String> jsonFiles = findJsonFiles();
 
             if (!jsonFiles.isEmpty()) {
                 Jt.info("### Oppure seleziona un file esistente").use();
-                String selectedFile = Jt.selectbox("File JSON disponibili", jsonFiles).index(0).use();
+                // Prependi opzione "Nessuno" alla lista
+                List<String> filesWithNone = new ArrayList<>();
+                filesWithNone.add("-- Scegli un file --");
+                filesWithNone.addAll(jsonFiles);
 
-                if (selectedFile != null) {
-                    try {
-                        byte[] content = Files.readString(Path.of(selectedFile)).getBytes();
-                        uploadedFiles = Collections.singletonList(
-                            new JtUploadedFile(selectedFile, "application/json", content)
-                        );
-                    } catch (IOException e) {
-                        Jt.error("Errore nella lettura del file: " + e.getMessage()).use();
-                        return;
-                    }
-                } else {
-                    Jt.warning("Nessun file selezionato.").use();
+                String selectedFile = Jt.selectbox("File JSON disponibili", filesWithNone).use();
+
+                // Se l'utente seleziona "Nessuno" o non seleziona nulla, mostra messaggio e torna
+                if (selectedFile == null || selectedFile.equals("-- Scegli un file --")) {
+                    Jt.warning("Seleziona un file per visualizzare i dati.").use();
+                    return;
+                }
+
+                try {
+                    byte[] content = Files.readString(Path.of(selectedFile)).getBytes();
+                    uploadedFiles = Collections.singletonList(
+                        new JtUploadedFile(selectedFile, "application/json", content)
+                    );
+                } catch (IOException e) {
+                    Jt.error("Errore nella lettura del file: " + e.getMessage()).use();
                     return;
                 }
             } else {
-                Jt.warning("Nessun file JSON trovato. Carica un file o assicurati che ci siano file .json nella directory.").use();
+                Jt.warning("Nessun file JSON trovato. Carica un file.").use();
                 return;
             }
         }
